@@ -150,8 +150,8 @@ function setupFirestoreListeners(userId, currentAppId) {
       render();
     },
     (error) => {
-      console.error("Error fetching people:", error);
-      showMessage("خطأ في جلب قائمة الأشخاص. قد تكون بسبب صلاحيات Firestore.");
+      console.error("Error fetching people:", error.code, error.message);
+      showMessage(`خطأ في جلب الأشخاص: ${error.code}`);
     }
   );
 
@@ -164,10 +164,13 @@ function setupFirestoreListeners(userId, currentAppId) {
       render();
     },
     (error) => {
-      console.error("Error fetching expenses:", error);
-      showMessage("خطأ في جلب قائمة المصاريف. قد تكون بسبب صلاحيات Firestore.");
+      console.error("Error fetching expenses:", error.code, error.message);
+      showMessage(`خطأ في جلب المصاريف: ${error.code}`);
     }
   );
+
+  // Initial render to show empty state while data loads
+  render();
 }
 
 
