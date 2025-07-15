@@ -18,6 +18,9 @@ import {
   addDoc,
   deleteDoc,
   query,
+  updateDoc,
+  writeBatch,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Firebase Configuration ---
@@ -37,6 +40,7 @@ let people = [];
 let expenses = [];
 let db, auth;
 let peopleUnsubscribe, expensesUnsubscribe;
+let currentSummary = {};
 
 // --- DOM ELEMENTS ---
 const personNameInput = document.getElementById("personName");
@@ -51,6 +55,8 @@ const messageArea = document.getElementById("messageArea");
 const authContainer = document.getElementById("auth-container");
 const appContent = document.getElementById("app-content");
 const authFormsContainer = document.getElementById("auth-forms-container");
+const resetPaidStatusBtn = document.getElementById("resetPaidStatusBtn");
+
 
 // --- UTILITY FUNCTIONS ---
 const disableButton = (btn) => btn.disabled = true;
@@ -131,6 +137,7 @@ async function initializeFirebase() {
       if (user) {
         renderLoggedInUI(user);
         setupFirestoreListeners(user.uid);
+        resetPaidStatusBtn.onclick = () => resetAllPaidStatuses(user.uid);
       } else {
         renderLoggedOutUI();
         people = [];
@@ -147,7 +154,6 @@ async function initializeFirebase() {
 }
 
 function setupFirestoreListeners(userId) {
-  // Simplified collection paths
   const peopleCollectionPath = `users/${userId}/people`;
   const expensesCollectionPath = `users/${userId}/expenses`;
 
@@ -189,8 +195,7 @@ window.addPerson = async function (event) {
   }
   if (name && !people.some((p) => p.name === name)) {
     try {
-      // Use the simplified path
-      await addDoc(collection(db, `users/${user.uid}/people`), { name });
+      await addDoc(collection(db, `users/${user.uid}/people`), { name, paid: false });
       personNameInput.value = "";
       showMessage("تمت إضافة الشخص بنجاح!", false);
     } catch (error) {
@@ -217,7 +222,6 @@ window.deletePerson = async function (id) {
   }
 
   try {
-    // Use the simplified path
     await deleteDoc(doc(db, `users/${user.uid}/people`, id));
     showMessage("تم حذف الشخص.", false);
   } catch (error) {
@@ -249,13 +253,13 @@ window.addExpense = async function (event) {
   }
 
   try {
-    // Use the simplified path
     await addDoc(collection(db, `users/${user.uid}/expenses`), expense);
+    await resetAllPaidStatuses(user.uid, false); // Reset statuses without confirmation
     expenseDescriptionInput.value = "";
     expenseAmountInput.value = "";
     payerSelect.selectedIndex = 0;
     participantNodes.forEach((node) => (node.checked = false));
-    showMessage("تم تسجيل المصروف بنجاح!", false);
+    showMessage("تم تسجيل المصروف وإعادة تعيين الحالات.", false);
   } catch (error) {
     console.error("Error adding expense: ", error);
     showMessage(getFirebaseErrorMessage(error));
@@ -268,7 +272,6 @@ window.deleteExpense = async function (id) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    // Use the simplified path
     await deleteDoc(doc(db, `users/${user.uid}/expenses`, id));
     showMessage("تم حذف المصروف.", false);
   } catch (error) {
@@ -277,14 +280,68 @@ window.deleteExpense = async function (id) {
   }
 };
 
+window.confirmPayment = async function (personId) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const person = people.find(p => p.id === personId);
+    if (!person) return;
+    
+    const summaryData = currentSummary[person.name];
+    if (!summaryData) {
+        showMessage("لا يمكن العثور على بيانات الملخص للشخص.", true);
+        return;
+    }
+
+    const personRef = doc(db, `users/${user.uid}/people`, personId);
+    const logRef = collection(db, `users/${user.uid}/payment_log`);
+
+    try {
+        const batch = writeBatch(db);
+        
+        // 1. Update person's paid status
+        batch.update(personRef, { paid: true });
+
+        // 2. Add to payment log
+        batch.set(doc(logRef), {
+            name: person.name,
+            netAmount: summaryData.net,
+            timestamp: serverTimestamp()
+        });
+
+        await batch.commit();
+        showMessage(`تم تأكيد الدفع لـ ${person.name} وتسجيله.`, false);
+    } catch (error) {
+        console.error("Error confirming payment: ", error);
+        showMessage(getFirebaseErrorMessage(error));
+    }
+};
+
+async function resetAllPaidStatuses(userId, confirmReset = true) {
+    if (confirmReset && !confirm("هل أنت متأكد أنك تريد إعادة تعيين كل حالات الدفع إلى 'لم يدفع'؟")) {
+        return;
+    }
+    const batch = writeBatch(db);
+    people.forEach(person => {
+        const personRef = doc(db, `users/${userId}/people`, person.id);
+        batch.update(personRef, { paid: false });
+    });
+    try {
+        await batch.commit();
+        if(confirmReset) showMessage("تم إعادة تعيين كل الحالات بنجاح.", false);
+    } catch (error) {
+        console.error("Error resetting paid statuses: ", error);
+        showMessage(getFirebaseErrorMessage(error));
+    }
+}
+
 
 // --- UI RENDER FUNCTIONS ---
-// (No changes needed in the functions below, but they are included for completeness)
 
 function renderLoggedInUI(user) {
     authContainer.innerHTML = `
         <div class="flex items-center gap-4">
-            <button id="darkModeToggler" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+             <button id="darkModeToggler" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                 <svg class="w-6 h-6 stroke-gray-800 dark:stroke-white block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 <svg class="w-6 h-6 stroke-gray-800 dark:stroke-white hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </button>
@@ -365,7 +422,7 @@ function render() {
   renderPayerOptions();
   renderParticipantsCheckboxes();
   renderExpenseTable();
-  renderSummaryTable();
+  calculateAndRenderSummaryTable();
 }
 
 function showMessage(text, isError = true) {
@@ -406,15 +463,13 @@ function renderPeopleList() {
 
 function renderPayerOptions() {
   const currentValue = payerSelect.value;
-  payerSelect.innerHTML = '<option value="" disabled>اختر من دفع</option>';
+  payerSelect.innerHTML = '<option value="" disabled selected>اختر من دفع</option>';
   people.forEach((person) => {
     const option = `<option value="${person.name}">${person.name}</option>`;
     payerSelect.innerHTML += option;
   });
   if (people.find(p => p.name === currentValue)) {
     payerSelect.value = currentValue;
-  } else {
-    payerSelect.value = "";
   }
 }
 
@@ -443,29 +498,61 @@ function renderExpenseTable() {
   });
 }
 
-function renderSummaryTable() {
-  summaryTableBody.innerHTML = "";
-  if (people.length === 0) {
-    summaryTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500 dark:text-gray-400">أضف الأشخاص لعرض الملخص.</td></tr>';
-    return;
-  }
-  const summary = {};
-  people.forEach((person) => { summary[person.name] = { paid: 0, share: 0, net: 0 }; });
-  expenses.forEach((expense) => {
-    if (summary[expense.payer]) { summary[expense.payer].paid += expense.amount; }
-    const shareAmount = expense.participants.length > 0 ? expense.amount / expense.participants.length : 0;
-    expense.participants.forEach((participantName) => {
-      if (summary[participantName]) { summary[participantName].share += shareAmount; }
+function calculateAndRenderSummaryTable() {
+    summaryTableBody.innerHTML = "";
+    if (people.length === 0) {
+        summaryTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">أضف الأشخاص لعرض الملخص.</td></tr>';
+        return;
+    }
+
+    const summary = {};
+    people.forEach((person) => {
+        summary[person.name] = { id: person.id, paid: 0, share: 0, net: 0, hasPaid: person.paid };
     });
-  });
-  Object.keys(summary).forEach((personName) => {
-    const data = summary[personName];
-    data.net = data.paid - data.share;
-    const netClass = data.net >= 0 ? "summary-positive" : "summary-negative";
-    const row = `<tr class="border-b dark:border-gray-700"><td class="p-3 font-semibold">${personName}</td><td class="p-3">${data.paid.toFixed(2)}</td><td class="p-3">${data.share.toFixed(2)}</td><td class="p-3 font-bold text-lg ${netClass}">${data.net.toFixed(2)}</td></tr>`;
-    summaryTableBody.innerHTML += row;
-  });
+
+    expenses.forEach((expense) => {
+        if (summary[expense.payer]) {
+            summary[expense.payer].paid += expense.amount;
+        }
+        const shareAmount = expense.participants.length > 0 ? expense.amount / expense.participants.length : 0;
+        expense.participants.forEach((participantName) => {
+            if (summary[participantName]) {
+                summary[participantName].share += shareAmount;
+            }
+        });
+    });
+    
+    // Save summary to global variable for use in other functions
+    currentSummary = summary;
+
+    Object.keys(summary).forEach((personName) => {
+        const data = summary[personName];
+        data.net = data.paid - data.share;
+
+        const netClass = data.net >= 0 ? "summary-positive" : "summary-negative";
+        
+        let statusCell;
+        if (data.hasPaid) {
+            statusCell = `<span class="text-green-500 font-semibold">تم الدفع</span>`;
+        } else {
+            statusCell = `<button onclick="confirmPayment('${data.id}')" 
+                                  class="text-white font-bold py-1 px-2 rounded-lg text-xs transition-colors bg-green-500 hover:bg-green-600">
+                              تأكيد الدفع
+                          </button>`;
+        }
+
+        const row = `
+            <tr class="border-b dark:border-gray-700">
+                <td class="p-3 font-semibold">${personName}</td>
+                <td class="p-3">${data.paid.toFixed(2)}</td>
+                <td class="p-3">${data.share.toFixed(2)}</td>
+                <td class="p-3 font-bold text-lg ${netClass}">${data.net.toFixed(2)}</td>
+                <td class="p-3 text-center">${statusCell}</td>
+            </tr>`;
+        summaryTableBody.innerHTML += row;
+    });
 }
+
 
 // --- INITIALIZE THE APP ---
 applyInitialDarkMode();

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script>
         tailwind.config = {
@@ -15,16 +16,18 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col min-h-screen">
 
     <header class="bg-white dark:bg-gray-800 shadow-md">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">حاسبة المصاريف</h1>
+             <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">حاسبة المصاريف</h1>
+            </div>
             <div id="auth-container"></div>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-6">
+    <main class="container mx-auto px-4 py-6 flex-grow">
         <div id="auth-forms-container" class="max-w-md mx-auto">
             <!-- Auth forms will be rendered here by app.js -->
         </div>
@@ -83,7 +86,10 @@
 
                     <!-- Summary Table -->
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                        <h2 class="text-xl font-bold mb-4">الملخص</h2>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">الملخص</h2>
+                            <button id="resetPaidStatusBtn" class="bg-orange-500 text-white font-bold py-1 px-3 rounded-lg text-xs hover:bg-orange-600 transition-colors">إعادة تعيين كل الحالات</button>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right">
                                 <thead class="border-b-2 border-gray-200 dark:border-gray-700">
@@ -92,21 +98,33 @@
                                         <th class="p-3">ما دفعه</th>
                                         <th class="p-3">ما عليه</th>
                                         <th class="p-3">الصافي</th>
+                                        <th class="p-3">الحالة</th>
                                     </tr>
                                 </thead>
                                 <tbody id="summaryTableBody"></tbody>
                             </table>
                         </div>
+                        <a href="log.html" class="block w-full mt-4 bg-blue-600 text-white text-center font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                            عرض سجل الدفعات
+                        </a>
                     </div>
                 </div>
 
             </div>
-             <div class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                App ID: <span id="appIdDisplay" class="font-mono"></span>
-            </div>
             <div id="messageArea" class="mt-4 text-center font-semibold"></div>
         </div>
     </main>
+
+    <footer class="bg-white dark:bg-gray-800 shadow-md mt-8">
+        <div class="container mx-auto px-4 py-4 text-center text-gray-600 dark:text-gray-400">
+            <p class="mb-2">تم التصميم بواسطة أحمد غاوي</p>
+            <div class="flex justify-center gap-4">
+                <a href="https://github.com/GH-ZX" target="_blank" rel="noopener noreferrer" class="hover:text-blue-500"><i class="fab fa-github fa-lg"></i></a>
+                <a href="https://wa.me/963968098330" target="_blank" rel="noopener noreferrer" class="hover:text-green-500"><i class="fab fa-whatsapp fa-lg"></i></a>
+                <a href="https://www.facebook.com/ahmed.ji.7543" target="_blank" rel="noopener noreferrer" class="hover:text-blue-700"><i class="fab fa-facebook fa-lg"></i></a>
+            </div>
+        </div>
+    </footer>
 
     <script type="module" src="app.js"></script>
 </body>
