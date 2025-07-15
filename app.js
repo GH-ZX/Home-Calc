@@ -24,7 +24,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Firebase Configuration ---
-// This is now directly inside app.js for simplicity.
 const firebaseConfig = {
   apiKey: "AIzaSyCB3wk3MH7YcWxriGXYS6-OYboRy4UIwLo",
   authDomain: "home-calculator-97fdf.firebaseapp.com",
@@ -56,11 +55,98 @@ const authContainer = document.getElementById("auth-container");
 const appContent = document.getElementById("app-content");
 const authFormsContainer = document.getElementById("auth-forms-container");
 const resetPaidStatusBtn = document.getElementById("resetPaidStatusBtn");
-
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
 // --- UTILITY FUNCTIONS ---
-const disableButton = (btn) => btn.disabled = true;
-const enableButton = (btn) => btn.disabled = false;
+const disableButton = (btn) => {
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+};
+const enableButton = (btn) => {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+};
+
+// --- PDF GENERATION ---
+async function downloadInvoice() {
+    if (Object.keys(currentSummary).length === 0) {
+        showMessage("لا يوجد بيانات في الملخص لإنشاء فاتورة.", true);
+        return;
+    }
+
+    disableButton(downloadPdfBtn);
+    showMessage("جاري تحضير الفاتورة...", false);
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Fetch font from the correct path
+        const fontResponse = await fetch('Assets/Fonts/Amiri/Amiri-Regular.ttf');
+        if (!fontResponse.ok) throw new Error("Failed to load font file from Assets/Fonts/Amiri/");
+        const font = await fontResponse.arrayBuffer();
+        const fontBase64 = btoa(new Uint8Array(font).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+        // Register the Amiri font with jsPDF
+        doc.addFileToVFS('Amiri-Regular.ttf', fontBase64);
+        doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+        doc.setFont('Amiri');
+
+        doc.setR2L(true); // Enable Right-to-Left text direction
+
+        doc.setFontSize(20);
+        doc.text("ملخص الفاتورة", 105, 15, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.text(`تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}`, 105, 22, { align: 'center' });
+        
+        const tableColumn = ["الصافي", "ما عليه", "ما دفعه", "الشخص"];
+        const tableRows = [];
+
+        Object.keys(currentSummary).forEach(personName => {
+            const data = currentSummary[personName];
+            const row = [
+                data.net.toFixed(2),
+                data.share.toFixed(2),
+                data.paid.toFixed(2),
+                personName,
+            ];
+            tableRows.push(row);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 30,
+            theme: 'grid',
+            headStyles: {
+                halign: 'center',
+                fillColor: [22, 160, 133],
+                font: 'Amiri',
+                fontStyle: 'normal'
+            },
+            bodyStyles: {
+                halign: 'center',
+                font: 'Amiri',
+                fontStyle: 'normal'
+            },
+            didParseCell: function (data) {
+                // To handle RTL text correctly in each cell
+                data.cell.text = data.cell.text.map(str => str.split('').reverse().join(''));
+            }
+        });
+
+        doc.save('فاتورة_المصاريف.pdf');
+        showMessage("تم تنزيل الفاتورة بنجاح!", false);
+
+    } catch (error) {
+        console.error("PDF generation failed:", error);
+        showMessage("حدث خطأ أثناء إنشاء الفاتورة.", true);
+    } finally {
+        enableButton(downloadPdfBtn);
+    }
+}
+
 
 // --- DARK MODE ---
 const toggleDarkMode = () => {
@@ -84,12 +170,15 @@ const signInWithGoogle = async (event) => {
   } catch (error) {
     console.error("Error signing in with Google:", error);
     showMessage(getFirebaseErrorMessage(error));
+  } finally {
+      enableButton(event.target);
   }
 };
 
 const signOutUser = async (event) => {
   disableButton(event.target);
   await signOut(auth);
+  // The button will be removed from the DOM, no need to re-enable
 };
 
 const handleSignUp = async (event) => {
@@ -138,6 +227,7 @@ async function initializeFirebase() {
         renderLoggedInUI(user);
         setupFirestoreListeners(user.uid);
         resetPaidStatusBtn.onclick = () => resetAllPaidStatuses(user.uid);
+        downloadPdfBtn.onclick = downloadInvoice;
       } else {
         renderLoggedOutUI();
         people = [];
@@ -254,7 +344,7 @@ window.addExpense = async function (event) {
 
   try {
     await addDoc(collection(db, `users/${user.uid}/expenses`), expense);
-    await resetAllPaidStatuses(user.uid, false); // Reset statuses without confirmation
+    await resetAllPaidStatuses(user.uid, false); 
     expenseDescriptionInput.value = "";
     expenseAmountInput.value = "";
     payerSelect.selectedIndex = 0;
@@ -298,17 +388,12 @@ window.confirmPayment = async function (personId) {
 
     try {
         const batch = writeBatch(db);
-        
-        // 1. Update person's paid status
         batch.update(personRef, { paid: true });
-
-        // 2. Add to payment log
         batch.set(doc(logRef), {
             name: person.name,
             netAmount: summaryData.net,
             timestamp: serverTimestamp()
         });
-
         await batch.commit();
         showMessage(`تم تأكيد الدفع لـ ${person.name} وتسجيله.`, false);
     } catch (error) {
@@ -443,6 +528,7 @@ function getFirebaseErrorMessage(error) {
     }
 }
 
+// Event Listeners
 document.querySelector('#personName').addEventListener("keypress", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -451,6 +537,7 @@ document.querySelector('#personName').addEventListener("keypress", (event) => {
 });
 document.querySelector('button[onclick="addPerson()"]').addEventListener('click', window.addPerson);
 document.querySelector('button[onclick="addExpense()"]').addEventListener('click', window.addExpense);
+
 
 function renderPeopleList() {
   peopleListDiv.innerHTML = "";
@@ -522,7 +609,6 @@ function calculateAndRenderSummaryTable() {
         });
     });
     
-    // Save summary to global variable for use in other functions
     currentSummary = summary;
 
     Object.keys(summary).forEach((personName) => {
