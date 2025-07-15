@@ -1,8 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read and write only their own data
-    match /users/{userId}/{appId}/{document=**} {
+    // Users can only read and write their own documents.
+    // The wildcard {document=**} matches any document or subcollection
+    // directly under the user's personal document collection.
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
