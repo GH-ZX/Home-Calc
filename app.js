@@ -70,8 +70,7 @@ const signInWithGoogle = async (event) => {
   } catch (error) {
     console.error("Error signing in with Google:", error);
     showMessage(getFirebaseErrorMessage(error));
-  } 
-  // We don't re-enable the button, as the UI will refresh on auth change
+  }
 };
 
 const signOutUser = async (event) => {
@@ -151,7 +150,6 @@ function setupFirestoreListeners(userId, currentAppId) {
   const expensesCollectionPath = `/users/${userId}/${currentAppId}/expenses`;
   appIdDisplay.textContent = currentAppId;
 
-  // Show app content immediately. Data will flow in.
   authFormsContainer.classList.add("hidden");
   appContent.classList.remove("hidden");
   
@@ -191,8 +189,8 @@ function renderLoggedInUI(user) {
     authContainer.innerHTML = `
         <div class="flex items-center gap-4">
             <button id="darkModeToggler" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                <svg class="w-6 h-6 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                <svg class="w-6 h-6 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg class="w-6 h-6 stroke-gray-800 dark:stroke-white block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <svg class="w-6 h-6 stroke-gray-800 dark:stroke-white hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </button>
             <div class="flex items-center gap-3">
                 ${user.photoURL ? `<img src="${user.photoURL}" alt="User Avatar" class="w-10 h-10 rounded-full">` : ''}
@@ -219,11 +217,11 @@ function renderSignInForm() {
             <form id="signInForm" class="space-y-4">
                 <div>
                     <label for="signInEmail" class="block font-semibold mb-2">البريد الإلكتروني</label>
-                    <input type="email" id="signInEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="email" id="signInEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="signInPassword" class="block font-semibold mb-2">كلمة المرور</label>
-                    <input type="password" id="signInPassword" name="password" required autocomplete="current-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="signInPassword" name="password" required autocomplete="current-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">دخول</button>
             </form>
@@ -252,11 +250,11 @@ function renderSignUpForm() {
             <form id="signUpForm" class="space-y-4">
                 <div>
                     <label for="signUpEmail" class="block font-semibold mb-2">البريد الإلكتروني</label>
-                    <input type="email" id="signUpEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="email" id="signUpEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="signUpPassword" class="block font-semibold mb-2">كلمة المرور</label>
-                    <input type="password" id="signUpPassword" name="password" required autocomplete="new-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="signUpPassword" name="password" required autocomplete="new-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">إنشاء حساب</button>
             </form>
@@ -447,7 +445,7 @@ function renderParticipantsCheckboxes() {
   people.forEach((person) => {
     const checkbox = `
       <label class="flex items-center space-x-3 space-x-reverse p-1 cursor-pointer">
-        <input type="checkbox" value="${person.name}" class="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 rtl-form-checkbox">
+        <input type="checkbox" value="${person.name}" class="form-checkbox h-5 w-5 text-blue-600 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded focus:ring-blue-500 rtl-form-checkbox">
         <span class="text-gray-700 dark:text-gray-300">${person.name}</span>
       </label>`;
     participantsDiv.innerHTML += checkbox;
@@ -457,7 +455,7 @@ function renderParticipantsCheckboxes() {
 function renderExpenseTable() {
   expenseTableBody.innerHTML = "";
   if (expenses.length === 0) {
-    expenseTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد مصاريف مسجلة بعد.</td></tr>';
+    expenseTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 dark:text-gray-400">لا توجد مصاريف مسجلة بعد.</td></tr>';
     return;
   }
   const sortedExpenses = [...expenses].sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
@@ -479,7 +477,7 @@ function renderExpenseTable() {
 function renderSummaryTable() {
   summaryTableBody.innerHTML = "";
   if (people.length === 0) {
-    summaryTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">أضف الأشخاص لعرض الملخص.</td></tr>';
+    summaryTableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500 dark:text-gray-400">أضف الأشخاص لعرض الملخص.</td></tr>';
     return;
   }
 

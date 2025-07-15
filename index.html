@@ -15,18 +15,18 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
 
-    <header class="bg-white shadow-md">
+    <header class="bg-white dark:bg-gray-800 shadow-md">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-blue-600">حاسبة المصاريف</h1>
+            <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">حاسبة المصاريف</h1>
             <div id="auth-container"></div>
         </div>
     </header>
 
     <main class="container mx-auto px-4 py-6">
         <div id="auth-forms-container" class="max-w-md mx-auto">
-            <!-- Auth forms will be rendered here -->
+            <!-- Auth forms will be rendered here by app.js -->
         </div>
 
         <div id="app-content" class="hidden">
@@ -35,22 +35,22 @@
                 <!-- People & Expenses Forms -->
                 <div>
                     <!-- Add Person Section -->
-                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                        <h2 class="text-xl font-bold mb-4 border-b pb-2">الأشخاص</h2>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+                        <h2 class="text-xl font-bold mb-4 border-b dark:border-gray-700 pb-2">الأشخاص</h2>
                         <div class="flex items-center gap-3 mb-4">
-                            <input type="text" id="personName" placeholder="اسم الشخص" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="personName" placeholder="اسم الشخص" class="flex-grow p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <button onclick="addPerson()" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">إضافة</button>
                         </div>
                         <div id="peopleList" class="flex flex-wrap gap-3"></div>
                     </div>
 
                     <!-- Add Expense Section -->
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h2 class="text-xl font-bold mb-4 border-b pb-2">تسجيل مصروف جديد</h2>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-bold mb-4 border-b dark:border-gray-700 pb-2">تسجيل مصروف جديد</h2>
                         <div class="space-y-4">
-                            <input type="text" id="expenseDescription" placeholder="وصف المصروف" class="w-full p-3 border border-gray-300 rounded-lg">
-                            <input type="number" id="expenseAmount" placeholder="المبلغ" class="w-full p-3 border border-gray-300 rounded-lg">
-                            <select id="payer" class="w-full p-3 border border-gray-300 rounded-lg rtl-form-select"></select>
+                            <input type="text" id="expenseDescription" placeholder="وصف المصروف" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg">
+                            <input type="number" id="expenseAmount" placeholder="المبلغ" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg">
+                            <select id="payer" class="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg rtl-form-select"></select>
                             <div>
                                 <h3 class="font-semibold mb-2">على من؟</h3>
                                 <div id="participants" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
@@ -63,11 +63,11 @@
                 <!-- Expenses & Summary Tables -->
                 <div>
                     <!-- Expenses Table -->
-                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
                         <h2 class="text-xl font-bold mb-4">قائمة المصاريف</h2>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right">
-                                <thead class="border-b-2 border-gray-200">
+                                <thead class="border-b-2 border-gray-200 dark:border-gray-700">
                                     <tr>
                                         <th class="p-3">الوصف</th>
                                         <th class="p-3">المبلغ</th>
@@ -82,11 +82,11 @@
                     </div>
 
                     <!-- Summary Table -->
-                    <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                         <h2 class="text-xl font-bold mb-4">الملخص</h2>
                         <div class="overflow-x-auto">
                             <table class="w-full text-right">
-                                <thead class="border-b-2 border-gray-200">
+                                <thead class="border-b-2 border-gray-200 dark:border-gray-700">
                                     <tr>
                                         <th class="p-3">الشخص</th>
                                         <th class="p-3">ما دفعه</th>
@@ -101,7 +101,7 @@
                 </div>
 
             </div>
-             <div class="mt-6 text-center text-sm text-gray-500">
+             <div class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
                 App ID: <span id="appIdDisplay" class="font-mono"></span>
             </div>
             <div id="messageArea" class="mt-4 text-center font-semibold"></div>
