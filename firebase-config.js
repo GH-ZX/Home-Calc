@@ -7,13 +7,13 @@
 // 4. انسخ كائن `firebaseConfig` والصقه هنا.
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBmmzirF2SU8i2PalAP4I_6q5oRKETwIHc",
-  authDomain: "home-calc-60da0.firebaseapp.com",
-  projectId: "home-calc-60da0",
-  storageBucket: "home-calc-60da0.appspot.com",
-  messagingSenderId: "574499631039",
-  appId: "1:574499631039:web:c8b5168e6957ffb4477b0a",
-  measurementId: "G-9VB3N4K34N"
+  apiKey: "AIzaSyCB3wk3MH7YcWxriGXYS6-OYboRy4UIwLo",
+  authDomain: "home-calculator-97fdf.firebaseapp.com",
+  projectId: "home-calculator-97fdf",
+  storageBucket: "home-calculator-97fdf.firebasestorage.app",
+  messagingSenderId: "438531796785",
+  appId: "1:438531796785:web:605c3a433ebbdfd8e54a10",
+  measurementId: "G-6DX0PQ78PS"
 };
 
 // هذا المعرف سيستخدم لإنشاء مسار فريد لبياناتك في Firestore.
