@@ -24,8 +24,13 @@
                 <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">سجل المدفوعات</h1>
                 <a href="index.html" class="text-blue-600 dark:text-blue-400 hover:underline">العودة للحاسبة</a>
             </div>
-            <div id="auth-container" class="flex items-center gap-4">
-                 <!-- Auth state will be shown here -->
+            <div class="flex items-center gap-4">
+                <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div id="auth-container" class="flex items-center gap-4">
+                     <!-- Auth state will be shown here -->
+                </div>
             </div>
         </div>
     </header>
@@ -70,6 +75,9 @@
     </footer>
 
     <script type="module" src="log.js"></script>
+    <script type="module" src="app.js"></script>
+
+
 
 </body>
 </html>

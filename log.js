@@ -14,7 +14,6 @@ const firebaseConfig = {
   measurementId: "G-6DX0PQ78PS"
 };
 
-
 // --- GLOBAL VARIABLES ---
 let db, auth;
 let logUnsubscribe;
@@ -25,6 +24,39 @@ const authContainer = document.getElementById('auth-container');
 const appContent = document.getElementById('app-content');
 const authMessage = document.getElementById('auth-message');
 const clearLogBtn = document.getElementById('clearLogBtn');
+const darkModeToggle = document.getElementById('darkModeToggle');
+
+// --- DARK MODE TOGGLE ---
+function applyTheme(theme) {
+    const html = document.documentElement;
+    if (theme === 'dark') {
+        html.classList.add('dark');
+    } else {
+        html.classList.remove('dark');
+    }
+}
+
+// Check for saved theme in localStorage or default to system preference
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+    applyTheme(savedTheme);
+} else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    applyTheme('dark');
+} else {
+    applyTheme('light');
+}
+
+darkModeToggle.addEventListener('click', () => {
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    } else {
+        html.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    }
+});
+
 
 // --- FIREBASE INITIALIZATION & AUTH ---
 async function initializeFirebase() {
