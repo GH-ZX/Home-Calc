@@ -106,17 +106,22 @@ async function initializeFirebase() {
     onAuthStateChanged(auth, (user) => {
       if (peopleUnsubscribe) peopleUnsubscribe();
       if (expensesUnsubscribe) expensesUnsubscribe();
-      
+
       if (user) {
-        authFormsContainer.innerHTML = "";
+        // Hide auth forms and show the main app content
+        authFormsContainer.classList.add("hidden");
+        appContent.classList.remove("hidden");
+
         console.log("User is signed in:", user.uid);
         renderLoggedInUI(user);
         setupFirestoreListeners(user.uid, appId);
-        appContent.classList.remove("hidden");
       } else {
+        // Show auth forms and hide the main app content
+        authFormsContainer.classList.remove("hidden");
+        appContent.classList.add("hidden");
+
         console.log("User is signed out.");
         renderLoggedOutUI();
-        appContent.classList.add("hidden");
         people = [];
         expenses = [];
         render();
