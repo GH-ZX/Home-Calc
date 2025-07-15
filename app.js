@@ -26,6 +26,7 @@ let expenses = []; // Local cache for expenses data
 
 let db, auth;
 let peopleUnsubscribe, expensesUnsubscribe;
+let loadingTimer; // Timer to prevent getting stuck on loading
 
 // --- DOM ELEMENTS ---
 const personNameInput = document.getElementById("personName");
@@ -52,7 +53,7 @@ const signInWithGoogle = async () => {
   });
   try {
     await signInWithPopup(auth, provider);
-    location.reload();
+    // No need to reload, onAuthStateChanged will handle it
   } catch (error) {
     console.error("Error signing in with Google:", error);
     showMessage("فشل تسجيل الدخول باستخدام جوجل.");
@@ -62,7 +63,7 @@ const signInWithGoogle = async () => {
 const signOutUser = async () => {
   try {
     await signOut(auth);
-    location.reload();
+    // No need to reload, onAuthStateChanged will handle it
   } catch (error) {
     console.error("Error signing out:", error);
     showMessage("فشل تسجيل الخروج.");
@@ -75,7 +76,6 @@ const handleSignUp = async (event) => {
     const password = event.target.password.value;
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        location.reload();
     } catch (error) {
         console.error("Error signing up:", error);
         showMessage(getFirebaseErrorMessage(error));
@@ -88,7 +88,6 @@ const handleSignIn = async (event) => {
     const password = event.target.password.value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        location.reload();
     } catch (error) {
         console.error("Error signing in:", error);
         showMessage(getFirebaseErrorMessage(error));
@@ -98,7 +97,7 @@ const handleSignIn = async (event) => {
 // --- FIREBASE INITIALIZATION & AUTH STATE CHANGES ---
 async function initializeFirebase() {
   try {
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
       showMessage("الرجاء تعبئة بيانات Firebase في ملف firebase-config.js");
       hideLoading();
       return;
@@ -110,26 +109,35 @@ async function initializeFirebase() {
     auth = getAuth(app);
 
     onAuthStateChanged(auth, (user) => {
+      // Clear any existing listeners to prevent data leaks or errors
+      if (peopleUnsubscribe) peopleUnsubscribe();
+      if (expensesUnsubscribe) expensesUnsubscribe();
+      
       if (user) {
         // User is signed in
-        authFormsContainer.innerHTML = ""; // Clear auth forms
+        authFormsContainer.innerHTML = "";
         console.log("User is signed in:", user.uid);
         renderLoggedInUI(user);
         setupFirestoreListeners(user.uid, appId);
         appContent.classList.remove("hidden");
-        // Fallback to hide loading screen, as snapshots seem to be failing silently.
-        hideLoading();
+
+        // Fallback timer to hide loading screen if Firestore is slow or fails
+        // This prevents the user from getting stuck forever.
+        clearTimeout(loadingTimer);
+        loadingTimer = setTimeout(() => {
+            console.warn("Firestore listeners took too long. Forcing UI update.");
+            hideLoading();
+        }, 5000); // 5 seconds timeout
+
       } else {
         // User is signed out
         console.log("User is signed out.");
         renderLoggedOutUI();
         appContent.classList.add("hidden");
-        if (peopleUnsubscribe) peopleUnsubscribe();
-        if (expensesUnsubscribe) expensesUnsubscribe();
         people = [];
         expenses = [];
-        render();
-        hideLoading();
+        render(); // Clear the tables
+        hideLoading(); // Hide loading screen immediately on sign out
       }
     });
   } catch (error) {
@@ -147,42 +155,54 @@ function setupFirestoreListeners(userId, currentAppId) {
 
   appIdDisplay.textContent = currentAppId;
 
-  // Unsubscribe from previous listeners if they exist
-  if (peopleUnsubscribe) peopleUnsubscribe();
-  if (expensesUnsubscribe) expensesUnsubscribe();
+  let peopleLoaded = false;
+  let expensesLoaded = false;
 
-  // Listen for real-time updates to people
+  const checkAndHideLoading = () => {
+      if (peopleLoaded && expensesLoaded) {
+          clearTimeout(loadingTimer); // Clear the fallback timer
+          hideLoading();
+          console.log("Both listeners loaded successfully.");
+      }
+  };
+
   const peopleQuery = query(collection(db, peopleCollectionPath));
   peopleUnsubscribe = onSnapshot(
     peopleQuery,
     (snapshot) => {
       people = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log("People updated:", people);
+      peopleLoaded = true;
       render();
-      hideLoading();
+      checkAndHideLoading();
     },
     (error) => {
       console.error("Error fetching people:", error);
-      showMessage("خطأ في جلب قائمة الأشخاص.");
-      hideLoading();
+      showMessage("خطأ في جلب قائمة الأشخاص. قد تكون بسبب صلاحيات Firestore.");
+      peopleLoaded = true;
+      checkAndHideLoading();
     }
   );
 
-  // Listen for real-time updates to expenses
   const expensesQuery = query(collection(db, expensesCollectionPath));
   expensesUnsubscribe = onSnapshot(
     expensesQuery,
     (snapshot) => {
       expenses = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log("Expenses updated:", expenses);
+      expensesLoaded = true;
       render();
+      checkAndHideLoading();
     },
     (error) => {
       console.error("Error fetching expenses:", error);
-      showMessage("خطأ في جلب قائمة المصاريف.");
+      showMessage("خطأ في جلب قائمة المصاريف. قد تكون بسبب صلاحيات Firestore.");
+      expensesLoaded = true;
+      checkAndHideLoading();
     }
   );
 }
+
 
 // --- UI & RENDER FUNCTIONS ---
 
@@ -273,6 +293,7 @@ function render() {
 }
 
 function hideLoading() {
+  clearTimeout(loadingTimer); // Always clear the timer when hiding
   loadingOverlay.style.opacity = "0";
   setTimeout(() => {
     loadingOverlay.style.display = "none";
