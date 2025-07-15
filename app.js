@@ -41,56 +41,55 @@ const appIdDisplay = document.getElementById("appIdDisplay");
 const authContainer = document.getElementById("auth-container");
 const appContent = document.getElementById("app-content");
 const authFormsContainer = document.getElementById("auth-forms-container");
-const loadingOverlay = document.getElementById("loading-overlay");
 
 // --- UTILITY FUNCTIONS ---
-const showLoading = () => loadingOverlay.style.display = 'flex';
-const hideLoading = () => loadingOverlay.style.display = 'none';
-
 const disableButton = (btn) => btn.disabled = true;
 const enableButton = (btn) => btn.disabled = false;
+
+// --- DARK MODE ---
+const toggleDarkMode = () => {
+    const isDarkMode = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('darkMode', isDarkMode);
+};
+
+const applyInitialDarkMode = () => {
+    if (localStorage.getItem('darkMode') === 'true' || 
+       (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode'))) {
+        document.documentElement.classList.add('dark');
+    }
+};
 
 // --- AUTHENTICATION ---
 
 const signInWithGoogle = async (event) => {
   disableButton(event.target);
-  showLoading();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   try {
     await signInWithPopup(auth, provider);
-    // onAuthStateChanged will handle UI changes
   } catch (error) {
     console.error("Error signing in with Google:", error);
     showMessage(getFirebaseErrorMessage(error));
-  } finally {
-    hideLoading();
-    enableButton(event.target);
-  }
+  } 
+  // We don't re-enable the button, as the UI will refresh on auth change
 };
 
 const signOutUser = async (event) => {
   disableButton(event.target);
   await signOut(auth);
-  // onAuthStateChanged will handle UI changes
-  // No need to re-enable button as it will be removed from DOM
 };
 
 const handleSignUp = async (event) => {
     event.preventDefault();
     const signUpButton = event.target.querySelector('button[type="submit"]');
     disableButton(signUpButton);
-    showLoading();
     const email = event.target.email.value;
     const password = event.target.password.value;
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle UI changes
     } catch (error) {
         console.error("Error signing up:", error);
         showMessage(getFirebaseErrorMessage(error));
-    } finally {
-        hideLoading();
         enableButton(signUpButton);
     }
 };
@@ -99,17 +98,13 @@ const handleSignIn = async (event) => {
     event.preventDefault();
     const signInButton = event.target.querySelector('button[type="submit"]');
     disableButton(signInButton);
-    showLoading();
     const email = event.target.email.value;
     const password = event.target.password.value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle UI changes
     } catch (error) {
         console.error("Error signing in:", error);
         showMessage(getFirebaseErrorMessage(error));
-    } finally {
-        hideLoading();
         enableButton(signInButton);
     }
 };
@@ -123,12 +118,11 @@ async function initializeFirebase() {
     }
 
     const app = initializeApp(firebaseConfig);
-    getAnalytics(app); // Initialize analytics
+    getAnalytics(app);
     db = getFirestore(app);
     auth = getAuth(app);
 
     onAuthStateChanged(auth, (user) => {
-      showLoading();
       if (peopleUnsubscribe) peopleUnsubscribe();
       if (expensesUnsubscribe) expensesUnsubscribe();
 
@@ -136,42 +130,31 @@ async function initializeFirebase() {
         console.log("User is signed in:", user.uid);
         renderLoggedInUI(user);
         setupFirestoreListeners(user.uid, appId);
-        // UI transition handled in setupFirestoreListeners
       } else {
         console.log("User is signed out.");
         renderLoggedOutUI();
         people = [];
         expenses = [];
-        render(); // Clear out old data from UI
+        render();
         authFormsContainer.classList.remove("hidden");
         appContent.classList.add("hidden");
-        hideLoading();
       }
     });
   } catch (error) {
     console.error("Firebase initialization failed:", error);
     showMessage("فشل الاتصال بقاعدة البيانات. تأكد من صحة بياناتك في firebase-config.js");
-    hideLoading();
   }
 }
 
 function setupFirestoreListeners(userId, currentAppId) {
   const peopleCollectionPath = `/users/${userId}/${currentAppId}/people`;
   const expensesCollectionPath = `/users/${userId}/${currentAppId}/expenses`;
-
   appIdDisplay.textContent = currentAppId;
 
-  let peopleLoaded = false;
-  let expensesLoaded = false;
-
-  const checkAllDataLoaded = () => {
-    if (peopleLoaded && expensesLoaded) {
-      authFormsContainer.classList.add("hidden");
-      appContent.classList.remove("hidden");
-      hideLoading();
-    }
-  };
-
+  // Show app content immediately. Data will flow in.
+  authFormsContainer.classList.add("hidden");
+  appContent.classList.remove("hidden");
+  
   const peopleQuery = query(collection(db, peopleCollectionPath));
   peopleUnsubscribe = onSnapshot(
     peopleQuery,
@@ -179,15 +162,10 @@ function setupFirestoreListeners(userId, currentAppId) {
       people = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log("People updated:", people);
       render();
-      if (!peopleLoaded) {
-        peopleLoaded = true;
-        checkAllDataLoaded();
-      }
     },
     (error) => {
       console.error("Error fetching people:", error.code, error.message);
       showMessage(`خطأ في جلب الأشخاص: ${error.code}`);
-      hideLoading();
     }
   );
 
@@ -198,61 +176,64 @@ function setupFirestoreListeners(userId, currentAppId) {
       expenses = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       console.log("Expenses updated:", expenses);
       render();
-      if (!expensesLoaded) {
-        expensesLoaded = true;
-        checkAllDataLoaded();
-      }
     },
     (error) => {
       console.error("Error fetching expenses:", error.code, error.message);
       showMessage(`خطأ في جلب المصاريف: ${error.code}`);
-      hideLoading();
     }
   );
 }
+
 
 // --- UI & RENDER FUNCTIONS ---
 
 function renderLoggedInUI(user) {
     authContainer.innerHTML = `
-        <div class="flex items-center gap-3">
-            ${user.photoURL ? `<img src="${user.photoURL}" alt="User Avatar" class="w-10 h-10 rounded-full">` : ''}
-            <span class="font-semibold text-gray-700 hidden sm:block">${user.displayName || user.email}</span>
-            <button id="signOutButton" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">
-                خروج
+        <div class="flex items-center gap-4">
+            <button id="darkModeToggler" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <svg class="w-6 h-6 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <svg class="w-6 h-6 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </button>
+            <div class="flex items-center gap-3">
+                ${user.photoURL ? `<img src="${user.photoURL}" alt="User Avatar" class="w-10 h-10 rounded-full">` : ''}
+                <span class="font-semibold text-gray-700 hidden sm:block dark:text-gray-300">${user.displayName || user.email}</span>
+                <button id="signOutButton" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">
+                    خروج
+                </button>
+            </div>
         </div>
     `;
     document.getElementById("signOutButton").addEventListener("click", signOutUser);
+    document.getElementById("darkModeToggler").addEventListener("click", toggleDarkMode);
 }
 
 function renderLoggedOutUI() {
-    authContainer.innerHTML = ''; // Clear the top auth container
-    renderSignInForm(); // Show the sign-in form by default
+    authContainer.innerHTML = '';
+    renderSignInForm();
 }
 
 function renderSignInForm() {
     authFormsContainer.innerHTML = `
-        <div class="bg-white p-8 rounded-xl shadow-md space-y-6">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md space-y-6">
             <h2 class="text-2xl font-bold text-center">تسجيل الدخول</h2>
             <form id="signInForm" class="space-y-4">
                 <div>
                     <label for="signInEmail" class="block font-semibold mb-2">البريد الإلكتروني</label>
-                    <input type="email" id="signInEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="email" id="signInEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="signInPassword" class="block font-semibold mb-2">كلمة المرور</label>
-                    <input type="password" id="signInPassword" name="password" required autocomplete="current-password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="signInPassword" name="password" required autocomplete="current-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">دخول</button>
             </form>
             <div class="text-center text-sm">
                 <p>أو</p>
-                <button id="googleSignInButton" class="w-full mt-2 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                <button id="googleSignInButton" class="w-full mt-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-bold py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-5 h-5">
                     <span>المتابعة باستخدام Google</span>
                 </button>
-                <p class="mt-4">ليس لديك حساب؟ <a href="#" id="showSignUp" class="text-blue-600 hover:underline">أنشئ حسابًا جديدًا</a></p>
+                <p class="mt-4">ليس لديك حساب؟ <a href="#" id="showSignUp" class="text-blue-600 dark:text-blue-400 hover:underline">أنشئ حسابًا جديدًا</a></p>
             </div>
         </div>
     `;
@@ -266,21 +247,21 @@ function renderSignInForm() {
 
 function renderSignUpForm() {
     authFormsContainer.innerHTML = `
-        <div class="bg-white p-8 rounded-xl shadow-md space-y-6">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md space-y-6">
             <h2 class="text-2xl font-bold text-center">إنشاء حساب جديد</h2>
             <form id="signUpForm" class="space-y-4">
                 <div>
                     <label for="signUpEmail" class="block font-semibold mb-2">البريد الإلكتروني</label>
-                    <input type="email" id="signUpEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="email" id="signUpEmail" name="email" required autocomplete="email" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label for="signUpPassword" class="block font-semibold mb-2">كلمة المرور</label>
-                    <input type="password" id="signUpPassword" name="password" required autocomplete="new-password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="signUpPassword" name="password" required autocomplete="new-password" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">إنشاء حساب</button>
             </form>
             <div class="text-center text-sm">
-                <p class="mt-4">لديك حساب بالفعل؟ <a href="#" id="showSignIn" class="text-blue-600 hover:underline">سجل الدخول</a></p>
+                <p class="mt-4">لديك حساب بالفعل؟ <a href="#" id="showSignIn" class="text-blue-600 dark:text-blue-400 hover:underline">سجل الدخول</a></p>
             </div>
         </div>
     `;
@@ -350,8 +331,6 @@ window.addPerson = async function (event) {
 };
 
 window.deletePerson = async function (id) {
-  // Disabling the button is tricky here as it's dynamically created.
-  // We rely on Firestore's speed and UI update instead.
   const personToDelete = people.find((p) => p.id === id);
   if (!personToDelete) return;
   const isUsed = expenses.some((e) => e.payer === personToDelete.name || e.participants.includes(personToDelete.name));
@@ -422,7 +401,7 @@ window.deleteExpense = async function (id) {
 // --- EVENT LISTENERS BINDING ---
 document.querySelector('#personName').addEventListener("keypress", (event) => {
   if (event.key === "Enter") {
-      event.preventDefault(); // Prevents form submission if it was inside a form
+      event.preventDefault();
       document.querySelector('button[onclick="addPerson()"]').click();
   }
 });
@@ -437,7 +416,7 @@ function renderPeopleList() {
   if (!people || people.length === 0) return;
   people.forEach((person) => {
     const personTag = `
-      <div class="bg-gray-200 text-gray-800 rounded-full px-4 py-2 flex items-center gap-2">
+      <div class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded-full px-4 py-2 flex items-center gap-2">
         <span>${person.name}</span>
         <button onclick="deletePerson('${person.id}')" class="text-red-500 hover:text-red-700 font-bold leading-none" aria-label="Delete ${person.name}">&times;</button>
       </div>`;
@@ -462,14 +441,14 @@ function renderPayerOptions() {
 function renderParticipantsCheckboxes() {
   participantsDiv.innerHTML = "";
   if (people.length === 0) {
-    participantsDiv.innerHTML = '<p class="text-gray-500">الرجاء إضافة أشخاص أولاً.</p>';
+    participantsDiv.innerHTML = '<p class="text-gray-500 dark:text-gray-400">الرجاء إضافة أشخاص أولاً.</p>';
     return;
   }
   people.forEach((person) => {
     const checkbox = `
       <label class="flex items-center space-x-3 space-x-reverse p-1 cursor-pointer">
         <input type="checkbox" value="${person.name}" class="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 rtl-form-checkbox">
-        <span class="text-gray-700">${person.name}</span>
+        <span class="text-gray-700 dark:text-gray-300">${person.name}</span>
       </label>`;
     participantsDiv.innerHTML += checkbox;
   });
@@ -481,11 +460,10 @@ function renderExpenseTable() {
     expenseTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد مصاريف مسجلة بعد.</td></tr>';
     return;
   }
-  // Sort expenses by creation date, newest first
   const sortedExpenses = [...expenses].sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
   sortedExpenses.forEach((expense) => {
     const row = `
-      <tr class="border-b hover:bg-gray-50">
+      <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
         <td class="p-3">${expense.description}</td>
         <td class="p-3">${expense.amount.toFixed(2)}</td>
         <td class="p-3">${expense.payer}</td>
@@ -527,7 +505,7 @@ function renderSummaryTable() {
     data.net = data.paid - data.share;
     const netClass = data.net >= 0 ? "summary-positive" : "summary-negative";
     const row = `
-      <tr class="border-b">
+      <tr class="border-b dark:border-gray-700">
         <td class="p-3 font-semibold">${personName}</td>
         <td class="p-3">${data.paid.toFixed(2)}</td>
         <td class="p-3">${data.share.toFixed(2)}</td>
@@ -538,5 +516,5 @@ function renderSummaryTable() {
 }
 
 // --- INITIALIZE THE APP ---
-showLoading();
+applyInitialDarkMode();
 initializeFirebase();
